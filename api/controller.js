@@ -44,56 +44,63 @@ function verifyToken(req, res, next) {
 }
 
 // API to get all movies data
-router.get("/movies", verifyToken, (req, res) => {
-    jwt.verify(req.token, "secretkey", (err, authData) => {
+router.get("/movies", verifyToken, async (req, res) => {
+    jwt.verify(req.token, "secretkey", async (err, authData) => {
         if (err) {
             res.sendStatus(403);
         } else {
-            Movie.find((err, movies) => {
-                if (err) {
-                    res.send("Error in fetching movies: " + err);
-                } else {
-                    res.json(movies);
-                }
-            });
+            try {
+                const allMovies = await Movie.find();
+                res.json(allMovies);
+            } catch (err) {
+                res.send("Error in fetching movies: " + err);
+            }
         }
     });
 });
 
 // Search movie by ID
-router.get("/movies/:id", (req, res) => {
+router.get("/movies/:id", async (req, res) => {
     const id = req.params.id;
-    Movie.findById(id, (err, movie) => {
-        if (err || !movie) {
-            res.status(400).send("Movie not found");
-        } else {
-            res.json(movie);
-        }
-    });
+   try{
+   const movie=await Movie.findById(id);
+   res.json(movie);
+}catch(err)
+{
+    res.status(400).send("Error in search by id"+err);
+}
 });
 
 // Delete movie by ID
-router.delete("/deleteMovie/:id", (req, res) => {
+router.delete("/deleteMovie/:id", async (req, res) => {
     const id = req.params.id;
-    Movie.findByIdAndDelete(id, (err) => {
-        if (err) {
-            res.send("Error in deleting movie: " + err);
-        } else {
-            res.send("Movie is deleted");
-        }
-    });
+    try{
+    const flag=await Movie.findByIdAndDelete(id);
+    res.status(200).send("Movie Deleted");
+    }catch(err){
+        res.status(404).send("Error in Deleting Movie"+err);
+    }
 });
 
 // Update movie by ID
-router.put("/updateMovie", (req, res) => {
+router.put("/updateMovie/:id", async (req, res) => {
+    const id = req.params.id;
     const updatedMovie = req.body;
-    Movie.findByIdAndUpdate(updatedMovie.id, updatedMovie, { new: true }, (err, movie) => {
-        if (err || !movie) {
-            res.status(400).send("Movie not found");
+    try {
+        const movie = await Movie.findById(id);
+        if (movie) {
+            movie.name = updatedMovie.name;
+            movie.releaseDate = updatedMovie.releaseDate;
+            movie.director = updatedMovie.director;
+            await movie.save();
+            res.send("Movie is Updated");
         } else {
-            res.send("Movie is updated");
+            res.status(400).send("Movie not found");
         }
-    });
+    } catch (err) {
+        res.status(500).send("Error updating movie: " + err);
+    }
 });
+
 
 module.exports = router;
